@@ -5,16 +5,7 @@
 //}
 int main()
 {
-    replay("config/web_2.ini");
-    replay("config/usr_1.ini"); //failed
-    replay("config/src1_1.ini");
-    replay("config/prxy_1.ini");
-    replay("config/proj_1.ini");
-    replay("config/prn_1.ini");
-    replay("config/hadoop13.ini");
-    replay("config/hadoop10.ini");
-    replay("config/backup5.ini");
-    replay("config/backup1.ini");
+    replay("config/config.ini");
 }
 
 void replay(char *configName)
@@ -22,7 +13,7 @@ void replay(char *configName)
 	struct config_info *config;
 	struct trace_info *trace;
 	struct req_info *req;
-	int fd[10];
+	int fd;
 	char *buf;
 	int i;
 	long long initTime,nowTime,reqTime,waitTime;
@@ -47,13 +38,13 @@ void replay(char *configName)
 	printf("config->devNum=%d\n",config->deviceNum);
 	for(i=0;i<config->deviceNum;i++)
 	{
-		printf("config->device[%d]=%s\n",i,config->device[i]);
+		printf("config->device=%s\n",config->device);
 	}
 	
 	for(i=0;i<config->deviceNum;i++)
 	{
-		fd[i] = open(config->device[i], O_DIRECT | O_SYNC | O_RDWR); 
-		if(fd[i] < 0) 
+		fd = open(config->device, O_DIRECT | O_SYNC | O_RDWR); 
+		if(fd < 0) 
 		{
 			fprintf(stderr, "Value of errno: %d\n", errno);
 	       		printf("Cannot open\n");
@@ -90,20 +81,7 @@ void replay(char *configName)
         /*********************************
         *    First Come First Service
         * ********************************/
-        if(req->lba < 20*1024*1024*2)
-		{
-            req->lba = req->lba % (RAMSIZE*2048);
-			submit_aio(fd[0],buf,req,trace);
-		}
-		else if(req->lba < 220*1024*1024*2)
-		{
-            req->lba=req->lba-20*1024*1024*2;
-			submit_aio(fd[1],buf,req,trace);
-		}else
-        {
-            req->lba=(req->lba-220*1024*1024*2)%(500*1024*1024*2);
-			submit_aio(fd[2],buf,req,trace);
-        }
+			submit_aio(fd,buf,req,trace);
 	}
     i=0;
 	while(trace->inNum > trace->outNum)
@@ -282,7 +260,7 @@ void config_read(struct config_info *config,const char *filename)
 
 		if(strcmp(line,"device")==0)
 		{
-			sscanf(line+value,"%s",config->device[config->deviceNum]);
+			sscanf(line+value,"%s",config->device);
 			config->deviceNum++;
 		}
 		else if(strcmp(line,"trace")==0)
@@ -324,6 +302,7 @@ void trace_read(struct config_info *config,struct trace_info *trace)
 			continue;
 		}
 		trace->inNum++;	//track the process of IO requests
+                //time:ms, lba:sectors, size:sectors, type: 1<-->write
 		sscanf(line,"%lf %d %lld %d %d",&req->time,&req->dev,&req->lba,&req->size,&req->type);
 		//push into request queue
 		req->time=req->time*1000;	//ms-->us

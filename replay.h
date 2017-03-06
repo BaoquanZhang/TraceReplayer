@@ -31,7 +31,7 @@
 #define BLOCK_PER_DRIVE		3800000	//2GB blocks number
 
 struct config_info{
-	char device[10][64];
+	char device[64];
 	char traceFileName[64];
 	int  deviceNum;
 	char logFileName[64];
